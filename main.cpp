@@ -9,20 +9,18 @@ float voltajeMax;
 float voltajeMin;
 float frecuencia;
 char tipo;
-int capacidad = 2;
+int capacidad = 20;
 float* arr = new float[capacidad];
 int cantElementos=0;
 float puntoMedio;
 int cont=0;
-int capMax=115;
+int capMax=170;
 
-void mostrarResultados(float voltaje,float frecuencia,char tipo);
 void miCopy(int* inicio, int* fin, int* destino);
 void redimArr(float*& arr, int& capacidad);
 void guardarEnArreglo(float*& arr, int & capacidad, float nuevoElemento, int&cantElementos);
 
 LiquidCrystal lcd_1(12, 11, 5, 4, 3, 2);
-
 
 void setup()
 {
@@ -50,7 +48,6 @@ void loop()
 
         guardarEnArreglo(arr,capacidad, voltaje, cantElementos);
         Serial.println(voltaje); //graficar voltaje vs tiempo
-        //Serial.println(cantElementos); // con esto se descubre que la cantidad maxima de memoria que se puede reservar antes de que el programa colapse
         if (voltaje>=voltajeMax)    //guardar voltaje maximo
         {
             voltajeMax=voltaje;
@@ -65,24 +62,28 @@ void loop()
             voltaje=(voltajeMax-voltajeMin)/2.0;
             puntoMedio=voltajeMax-voltaje;
             mostrarResultados(voltaje, frecuencia,tipo); //imprimir en pantalla
-            //for (int i=0;i<cantElementos;i++){   //si se descomenta, se pueden ver los datos guardados en el arreglo
-                //Serial.println(arr[i]); //simula la grafica registrada
-            //}
+            for (int i=0;i<cantElementos;i++){
+                Serial.println(arr[i]);
+            }
             delete[] arr;
+            arr=nullptr;
             arr = new float[capacidad];
             cantElementos=0;
-            capacidad=2;
+            capacidad=20;
         }
 
     }
 
 }
+
+
 void mostrarResultados(float voltaje,float frecuencia,char tipo){
     lcd_1.setCursor(0,0);
     lcd_1.print("Amplitud= ");
     lcd_1.setCursor(9,0);
     lcd_1.print(voltaje);
 }
+
 
 
 void miCopy(float* inicio, float* fin, float* destino) {
@@ -94,10 +95,11 @@ void miCopy(float* inicio, float* fin, float* destino) {
 }
 
 void redimArr(float*& arr, int& capacidad){
-    int nuevaCap = capacidad *2;
+    int nuevaCap = capacidad *3;
     float* nuevoArr = new float[nuevaCap];
     miCopy(arr,arr+capacidad,nuevoArr);
     delete[] arr;
+    arr=nullptr;
     arr = nuevoArr;
     capacidad = nuevaCap;
 }
@@ -108,6 +110,15 @@ void guardarEnArreglo(float*& arr, int& capacidad, float nuevoElemento, int&cant
         redimArr(arr,capacidad);
     }
     arr[cantElementos] = nuevoElemento;
-    cantElementos++;
+    if(cantElementos<capMax){
+        cantElementos++;
+    }
+    else{
+        for(int j=0;j<capacidad;j++){
+            arr[j]=arr[j+1];
+        }
+
+
+    }
 
 }
