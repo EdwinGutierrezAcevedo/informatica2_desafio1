@@ -1,90 +1,174 @@
 #include <LiquidCrystal.h>
 using namespace std;
-int unsigned seconds = 0;
+
 bool bottom = false;
 int analogPin = A0;
 float valor = 0;
-float voltaje;
-float voltajeMax;
-float voltajeMin;
-float frecuencia;
-char tipo;
-int capacidad = 20;
+float voltaje, voltajeMax, voltajeMin, frecuencia;
+float periodo;
+String tipo;
+int capacidad = 11;
 float* arr = new float[capacidad];
-int cantElementos=0;
+int cantElementos = 0;
 float puntoMedio;
-int cont=0;
-int capMax=170;
+//double inicio,fin,diff;
+int capMax = 317;
 
-void miCopy(int* inicio, int* fin, int* destino);
+void guardarEnArreglo(float*& arr, int& capacidad, float nuevoElemento, int& cantElementos);
 void redimArr(float*& arr, int& capacidad);
-void guardarEnArreglo(float*& arr, int & capacidad, float nuevoElemento, int&cantElementos);
+void miCopy(float* inicio, float* fin, float* destino);
+void mostrarResultados(float voltaje, float frecuencia, char tipo);
+float calcularPeriodo(float* arr, int cantElementos, float puntoMedio);
 
 LiquidCrystal lcd_1(12, 11, 5, 4, 3, 2);
 
-void setup()
-{
-    lcd_1.begin(16, 2); //inicializar lcd
-    pinMode(A0,INPUT);
-    pinMode (13,INPUT);
-    pinMode (8,INPUT);
+void setup() {
+    lcd_1.begin(16, 2);
+    pinMode(A0, INPUT);
+    pinMode(13, INPUT);
+    pinMode(8, INPUT);
     Serial.begin(9600);
 }
 
-void loop()
-{
-    if (digitalRead(13)==LOW) // si detecta boton inicio (izquierdo)
-    {
+void loop() {
+    if (digitalRead(13) == LOW) { // si detecta botón inicio (izquierdo)
         bottom = true;
-        voltajeMax=-10.0;
-        voltajeMin=10.0;
-
+        voltajeMax = -10.0;
+        voltajeMin = 10.0;
     }
-    while( bottom == true) //mientras no se presione el boton final (derecho)
-    {
-
+    while (bottom == true) {
         valor = analogRead(analogPin);
-        voltaje=valor*(5.0/1023.0);
-
-        guardarEnArreglo(arr,capacidad, voltaje, cantElementos);
-        Serial.println(voltaje); //graficar voltaje vs tiempo
-        if (voltaje>=voltajeMax)    //guardar voltaje maximo
-        {
-            voltajeMax=voltaje;
+        voltaje = valor * (5.0 / 1023.0);
+        guardarEnArreglo(arr, capacidad, voltaje, cantElementos);
+        //Serial.println(millis()); //Al hacer esto se observa que la tasa de refresco es de 6 milisegundos
+        Serial.println(cantElementos);
+        if (voltaje >= voltajeMax) {
+            voltajeMax = voltaje;
         }
-        if (voltaje<=voltajeMin)  //guardar voltaje minimo
-        {
-            voltajeMin=voltaje;
+        if (voltaje <= voltajeMin) {
+            voltajeMin = voltaje;
         }
-        if (digitalRead(8)==LOW)  // si detecta boton final
-        {
-            bottom=false;     //cambiamos el valor para salir del ciclo
-            voltaje=(voltajeMax-voltajeMin)/2.0;
-            puntoMedio=voltajeMax-voltaje;
-            mostrarResultados(voltaje, frecuencia,tipo); //imprimir en pantalla
-            for (int i=0;i<cantElementos;i++){
-                Serial.println(arr[i]);
-            }
+        if (digitalRead(8) == LOW) {
+            bottom = false;
+            puntoMedio = (voltajeMax + voltajeMin) / 2.0;
+            periodo = calcularPeriodo(arr, cantElementos, puntoMedio);
+            frecuencia = 1.0 / periodo;
+            tipo=tipoOnda(arr,cantElementos,voltajeMax,puntoMedio,frecuencia);
+            mostrarResultados((voltajeMax - voltajeMin) / 2.0, frecuencia, tipo); // imprimir en pantalla
             delete[] arr;
-            arr=nullptr;
+            cantElementos = 0;
+            capacidad = 11;
+            arr = nullptr;
             arr = new float[capacidad];
-            cantElementos=0;
-            capacidad=20;
-        }
 
+        }
+    }
+}
+
+String tipoOnda(float* arr,int cantElementos,float voltajeMax,float puntoMedio,float frecuencia){
+    float pendienteCresta1,diffPendientes,pendientePM1;
+    float comparacion=frecuencia*voltajeMax*2/100;
+    bool repe=true;
+    String tipo;
+
+    for (int i=3;i<cantElementos;i++)
+    {
+        if ((voltajeMax - arr[i]<=0.1)&& repe ) //cerca de una cresta
+        {
+            pendienteCresta1=arr[i]-arr[i-1];
+            repe=false;
+        }
+        if ((arr[i-1] < puntoMedio && puntoMedio <= arr[i])&& !repe) //cerca del punto medio
+        {
+            pendientePM1=arr[i]-arr[i-1];
+            break;
+        }
+    }
+    diffPendientes=pendientePM1-pendienteCresta1;
+    if(diffPendientes<=comparacion)
+    {
+        if(diffPendientes==0)
+        {
+            tipo="cuadrada";
+        }
+        else
+        {
+            tipo="triangular";
+        }
+    }
+    else
+    {
+        if(diffPendientes<1)
+        {
+            tipo="sinusoidal";
+        }
+        else
+        {
+            tipo="no identificada";
+        }
+    }
+    return tipo;
+}
+
+float calcularPeriodo(float* arr, int cantElementos, float puntoMedio) {
+    bool cruzando = false;
+    float tiempoCruzadoInicio = 0;
+    float tiempoCruzadoFinal = 0;
+    int cruces = 0;
+
+    for (int i = 1; i < cantElementos; i++)
+    {
+        if ((arr[i-1] < puntoMedio && puntoMedio <= arr[i]) || (arr[i-1] > puntoMedio && puntoMedio >= arr[i]))
+        {
+            if (!cruzando)
+            {
+                tiempoCruzadoInicio = millis();
+                cruzando = true;
+            }
+            else {
+                cruces++;
+                if (cruces == 2)
+                {
+                    tiempoCruzadoFinal = millis();
+                    break;
+                }
+            }
+        }
+        if(cruzando)
+        {
+            delay(6);
+        }
     }
 
+    tiempoCruzadoFinal=millis()-tiempoCruzadoInicio;
+
+    if (cruces < 2)
+    {
+        return 0; // No se detectaron suficientes cruces para calcular el periodo
+    }
+
+    return (tiempoCruzadoFinal)/1000.0; // Convertir a segundos
 }
 
-
-void mostrarResultados(float voltaje,float frecuencia,char tipo){
-    lcd_1.setCursor(0,0);
-    lcd_1.print("Amplitud= ");
-    lcd_1.setCursor(9,0);
+void mostrarResultados(float voltaje, float frecuencia, String tipo) {
+    lcd_1.clear();
+    lcd_1.setCursor(0, 0);
+    lcd_1.print("Amplitud");
+    lcd_1.setCursor(0, 1);
     lcd_1.print(voltaje);
+    delay(4000);
+    lcd_1.clear();
+    lcd_1.setCursor(0, 0);
+    lcd_1.print("Frecuencia");
+    lcd_1.setCursor(0, 1);
+    lcd_1.print(frecuencia);
+    delay(4000);
+    lcd_1.clear();
+    lcd_1.setCursor(0, 0);
+    lcd_1.print("Tipo de onda");
+    lcd_1.setCursor(0, 1);
+    lcd_1.print(tipo);
 }
-
-
 
 void miCopy(float* inicio, float* fin, float* destino) {
     while (inicio != fin) {
@@ -94,31 +178,27 @@ void miCopy(float* inicio, float* fin, float* destino) {
     }
 }
 
-void redimArr(float*& arr, int& capacidad){
-    int nuevaCap = capacidad *3;
+void redimArr(float*& arr, int& capacidad) {
+    int nuevaCap = capacidad * 30;
     float* nuevoArr = new float[nuevaCap];
-    miCopy(arr,arr+capacidad,nuevoArr);
+    miCopy(arr, arr + capacidad, nuevoArr);
     delete[] arr;
     arr=nullptr;
     arr = nuevoArr;
     capacidad = nuevaCap;
+
 }
 
-
-void guardarEnArreglo(float*& arr, int& capacidad, float nuevoElemento, int&cantElementos){
-    if(cantElementos == capacidad){
-        redimArr(arr,capacidad);
+void guardarEnArreglo(float*& arr, int& capacidad, float nuevoElemento, int& cantElementos) {
+    if (cantElementos == capacidad) {
+        redimArr(arr, capacidad);
     }
     arr[cantElementos] = nuevoElemento;
-    if(cantElementos<capMax){
+    if (cantElementos < capMax) {
         cantElementos++;
-    }
-    else{
-        for(int j=0;j<capacidad;j++){
-            arr[j]=arr[j+1];
+    } else {
+        for (int j = 0; j < capacidad; j++) {
+            arr[j] = arr[j + 1];
         }
-
-
     }
-
 }
