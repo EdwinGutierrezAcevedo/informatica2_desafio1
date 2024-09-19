@@ -104,11 +104,7 @@ String tipoOnda(float* arr, int cantElementos,float voltajeMax,float puntoMedio,
             break;
         }
     }
-    Serial.println(pendienteCresta1);
-    Serial.println(pendientePM1);
     diffPendientes=pendientePM1-pendienteCresta1;
-    Serial.println(diffPendientes);
-    Serial.println(comparacion);
     if (diffPendientes==0||diffPendientes==(voltajeMax-voltajeMin)/2)
     {
         tipo="cuadrada";
