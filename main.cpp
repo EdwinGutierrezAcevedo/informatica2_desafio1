@@ -93,19 +93,13 @@ String tipoOnda(float* arr, int cantElementos,float voltajeMax,float puntoMedio,
         }
         if ((arr[i-1] < puntoMedio && puntoMedio <= arr[i])&& !repe) //cerca del punto medio
         {
-            //if (puntoMedio<0)
-            //{
-            //pendientePM1=arr[i-1]-arr[i];
-            //}
-            //else
-            //{
             pendientePM1=arr[i]-arr[i-1];
             //}
             break;
         }
     }
     diffPendientes=pendientePM1-pendienteCresta1;
-    if (diffPendientes==0||diffPendientes==(voltajeMax-voltajeMin)/2)
+    if (diffPendientes==0||diffPendientes==(voltajeMax-voltajeMin))
     {
         tipo="cuadrada";
     }
